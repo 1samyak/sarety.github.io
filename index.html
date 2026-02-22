@@ -1484,13 +1484,13 @@
 
     <!-- Demo Mode Banner -->
     <div id="demoBanner">
-        <span>⚡ DEMO MODE — Live data requires backend. Showing simulated market data.</span>
+        <span>⚡ DEMO MODE — Attempting to load live NSE data via Yahoo Finance. Showing simulated data until API responds.</span>
         <button onclick="document.getElementById('demoBanner').style.display='none'">✕ Dismiss</button>
     </div>
 
     <!-- Live Data Banner (shown when API succeeds) -->
     <div id="liveDataBanner">
-        <span>● LIVE DATA — Real-time NSE data via open API</span>
+        <span>● LIVE DATA — Real-time NSE/BSE data via Yahoo Finance API</span>
     </div>
 
     <!-- Moving Stock Ticker -->
@@ -2080,19 +2080,27 @@
         // ─── YAHOO FINANCE QUOTE HELPER ─────────────────────────────────
         async function fetchStockQuote(symbol) {
             const url = `${YAHOO_PROXY}/${encodeURIComponent(symbol)}?interval=1d&range=5d&corsDomain=finance.yahoo.com`;
-            const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const json = await res.json();
-            const meta = json.chart.result[0].meta;
-            const prev = meta.previousClose || meta.chartPreviousClose;
-            return {
-                symbol: symbol,
-                price: meta.regularMarketPrice,
-                previousClose: prev,
-                change: meta.regularMarketPrice - prev,
-                changePercent: ((meta.regularMarketPrice - prev) / prev) * 100,
-                name: meta.shortName || symbol
-            };
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
+            try {
+                const res = await fetch(url, { signal: controller.signal, headers: { 'Accept': 'application/json' } });
+                clearTimeout(timer);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const json = await res.json();
+                const meta = json.chart.result[0].meta;
+                const prev = meta.previousClose || meta.chartPreviousClose;
+                return {
+                    symbol: symbol,
+                    price: meta.regularMarketPrice,
+                    previousClose: prev,
+                    change: meta.regularMarketPrice - prev,
+                    changePercent: ((meta.regularMarketPrice - prev) / prev) * 100,
+                    name: meta.shortName || symbol
+                };
+            } catch (e) {
+                clearTimeout(timer);
+                throw e;
+            }
         }
 
         // ─── LIVE TICKER FETCH ───────────────────────────────────────────
@@ -2110,16 +2118,20 @@
                 'ONGC.NS','SUNPHARMA.NS','BHARTIARTL.NS','ADANIENT.NS',
                 'TATASTEEL.NS','HINDALCO.NS'
             ];
+            console.log('[Sarety] Fetching live ticker data from Yahoo Finance…');
             try {
                 const results = await Promise.allSettled(symbols.map(s => fetchStockQuote(s)));
                 const live = results
                     .filter(r => r.status === 'fulfilled')
                     .map(r => r.value);
+                console.log(`[Sarety] Ticker: ${live.length}/${symbols.length} symbols loaded`);
                 if (live.length >= 5) {
                     updateTicker(live);
+                } else {
+                    console.warn('[Sarety] Not enough ticker data — keeping static ticker');
                 }
             } catch (e) {
-                // silently fall back to static data
+                console.warn('[Sarety] fetchLiveTickerData error:', e);
             }
         }
 
@@ -2130,6 +2142,7 @@
                 { sym: '^BSESN',   key: 'sensex' },
                 { sym: '^NSEBANK', key: 'banknifty' },
             ];
+            console.log('[Sarety] Fetching live indices from Yahoo Finance…');
             try {
                 const results = await Promise.allSettled(indexSymbols.map(i => fetchStockQuote(i.sym)));
                 let anySuccess = false;
@@ -2137,6 +2150,7 @@
                     if (res.status === 'fulfilled') {
                         const data = res.value;
                         const key = indexSymbols[i].key;
+                        console.log(`[Sarety] ${key.toUpperCase()}: ₹${data.price} (${data.changePercent >= 0 ? '+' : ''}${data.changePercent.toFixed(2)}%)`);
                         LATEST_PRICES[key] = data.price;
                         const valueEl = document.getElementById(`${key}Value`);
                         const changeEl = document.getElementById(`${key}Change`);
@@ -2157,6 +2171,8 @@
                             moverEl.textContent = `${arrow} ${sign}${data.changePercent.toFixed(2)}%`;
                         }
                         anySuccess = true;
+                    } else {
+                        console.warn(`[Sarety] ${indexSymbols[i].key.toUpperCase()} fetch failed:`, res.reason);
                     }
                 });
                 if (anySuccess) {
@@ -2167,9 +2183,11 @@
                     if (liveBanner) liveBanner.style.display = 'flex';
                     const subtitle = document.getElementById('chartSubtitle');
                     if (subtitle) subtitle.textContent = 'Live NSE data via Yahoo Finance';
+                } else {
+                    console.warn('[Sarety] All index fetches failed — showing static data');
                 }
             } catch (e) {
-                // silent fallback — keep static data
+                console.warn('[Sarety] fetchLiveIndices error:', e);
             }
         }
 
@@ -2192,11 +2210,15 @@
                 const live = results
                     .filter(r => r.status === 'fulfilled')
                     .map(r => r.value);
+                console.log(`[Sarety] Trending (${type}): ${live.length}/${syms.length} symbols loaded`);
                 if (live.length >= 3) {
                     populateStocksList(live);
                     return;
                 }
-            } catch (e) { /* fall through */ }
+                console.warn(`[Sarety] Trending (${type}): insufficient live data, using static fallback`);
+            } catch (e) {
+                console.warn(`[Sarety] fetchLiveTrending(${type}) error:`, e);
+            }
             // fallback
             populateStocksList(TRENDING_DATA[type] || TRENDING_DATA.gainers);
         }
@@ -2694,6 +2716,7 @@
         setInterval(updateChartData, 5000);
 
         // Fetch live data on init
+        console.log('[Sarety] Checking Yahoo Finance API availability…', YAHOO_PROXY);
         fetchLiveIndices();
         fetchLiveTickerData();
 
