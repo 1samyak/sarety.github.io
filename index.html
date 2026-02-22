@@ -1749,8 +1749,9 @@
     <script>
         // ─── CONFIGURATION ───────────────────────────────────────────────
         const API_BASE_URL = '';   // No backend on GitHub Pages — static mode only
-        const LIVE_API_BASE = 'https://military-jobye-haiqstudios-14f59639.koyeb.app';
+        const LIVE_API_BASE = 'https://military-jobye-haiqstudios-14f59639.koyeb.app'; // kept for reference, no longer used
         const FETCH_TIMEOUT = 8000;
+        const YAHOO_PROXY = 'https://query1.finance.yahoo.com/v8/finance/chart';
         let isBackendAvailable = false;
         let liveDataActive = false;
         let currentTab = 'gainers';
@@ -2076,6 +2077,24 @@
             }
         }
 
+        // ─── YAHOO FINANCE QUOTE HELPER ─────────────────────────────────
+        async function fetchStockQuote(symbol) {
+            const url = `${YAHOO_PROXY}/${encodeURIComponent(symbol)}?interval=1d&range=5d&corsDomain=finance.yahoo.com`;
+            const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const json = await res.json();
+            const meta = json.chart.result[0].meta;
+            const prev = meta.previousClose || meta.chartPreviousClose;
+            return {
+                symbol: symbol,
+                price: meta.regularMarketPrice,
+                previousClose: prev,
+                change: meta.regularMarketPrice - prev,
+                changePercent: ((meta.regularMarketPrice - prev) / prev) * 100,
+                name: meta.shortName || symbol
+            };
+        }
+
         // ─── LIVE TICKER FETCH ───────────────────────────────────────────
         const TICKER_SYMBOLS = [
             'RELIANCE','TCS','INFY','HDFCBANK','ICICIBANK','SBIN','WIPRO',
@@ -2084,18 +2103,20 @@
         ];
 
         async function fetchLiveTickerData() {
+            const symbols = [
+                'RELIANCE.NS','TCS.NS','INFY.NS','HDFCBANK.NS','ICICIBANK.NS',
+                'SBIN.NS','WIPRO.NS','AXISBANK.NS','LT.NS','BAJFINANCE.NS',
+                'HINDUNILVR.NS','KOTAKBANK.NS','MARUTI.NS','TATAMOTORS.NS',
+                'ONGC.NS','SUNPHARMA.NS','BHARTIARTL.NS','ADANIENT.NS',
+                'TATASTEEL.NS','HINDALCO.NS'
+            ];
             try {
-                const promises = TICKER_SYMBOLS.map(sym =>
-                    liveApiFetch(`${LIVE_API_BASE}/stock?symbol=${sym}.NS`)
-                        .catch(() => null)
-                );
-                const results = await Promise.allSettled(promises);
+                const results = await Promise.allSettled(symbols.map(s => fetchStockQuote(s)));
                 const live = results
-                    .filter(r => r.status === 'fulfilled' && r.value && r.value.price)
+                    .filter(r => r.status === 'fulfilled')
                     .map(r => r.value);
-                if (live.length > 0) {
+                if (live.length >= 5) {
                     updateTicker(live);
-                    markLiveDataActive();
                 }
             } catch (e) {
                 // silently fall back to static data
@@ -2104,35 +2125,51 @@
 
         // ─── LIVE INDICES FETCH ──────────────────────────────────────────
         async function fetchLiveIndices() {
+            const indexSymbols = [
+                { sym: '^NSEI',    key: 'nifty' },
+                { sym: '^BSESN',   key: 'sensex' },
+                { sym: '^NSEBANK', key: 'banknifty' },
+            ];
             try {
-                const [nsei, bsesn, nsebank] = await Promise.allSettled([
-                    liveApiFetch(`${LIVE_API_BASE}/stock?symbol=^NSEI`),
-                    liveApiFetch(`${LIVE_API_BASE}/stock?symbol=^BSESN`),
-                    liveApiFetch(`${LIVE_API_BASE}/stock?symbol=^NSEBANK`)
-                ]);
-                const indices = [nsei, bsesn, nsebank]
-                    .filter(r => r.status === 'fulfilled' && r.value && r.value.price)
-                    .map(r => r.value);
-                if (indices.length > 0) {
-                    updateIndicesUI(indices);
-                    // Update movers bar with live data
-                    indices.forEach(idx => {
-                        const pct = parseFloat(idx.changePercent);
-                        const sym = (idx.symbol || '').replace('^','');
-                        const idMap = { 'NSEI': 'moverNifty', 'BSESN': 'moverSensex', 'NSEBANK': 'moverBankNifty' };
-                        const elId = idMap[sym];
-                        if (elId) {
-                            const el = document.getElementById(elId);
-                            if (el) {
-                                el.className = pct >= 0 ? 'up' : 'down';
-                                el.textContent = `${pct >= 0 ? '▲' : '▼'} ${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%`;
-                            }
+                const results = await Promise.allSettled(indexSymbols.map(i => fetchStockQuote(i.sym)));
+                let anySuccess = false;
+                results.forEach((res, i) => {
+                    if (res.status === 'fulfilled') {
+                        const data = res.value;
+                        const key = indexSymbols[i].key;
+                        LATEST_PRICES[key] = data.price;
+                        const valueEl = document.getElementById(`${key}Value`);
+                        const changeEl = document.getElementById(`${key}Change`);
+                        if (valueEl) valueEl.textContent = formatPrice(data.price);
+                        if (changeEl) {
+                            const arrow = data.change >= 0 ? '▲' : '▼';
+                            const sign  = data.change >= 0 ? '+' : '';
+                            changeEl.textContent = `${arrow} ${sign}${data.change.toFixed(2)} (${sign}${Math.abs(data.changePercent).toFixed(2)}%)`;
+                            changeEl.className = `market-card-change ${data.change >= 0 ? 'up' : 'down'}`;
                         }
-                    });
-                    markLiveDataActive();
+                        // update movers bar
+                        const moverIds = { nifty: 'moverNifty', sensex: 'moverSensex', banknifty: 'moverBankNifty' };
+                        const moverEl = document.getElementById(moverIds[key]);
+                        if (moverEl) {
+                            const arrow = data.changePercent >= 0 ? '▲' : '▼';
+                            const sign  = data.changePercent >= 0 ? '+' : '';
+                            moverEl.className = data.changePercent >= 0 ? 'up' : 'down';
+                            moverEl.textContent = `${arrow} ${sign}${data.changePercent.toFixed(2)}%`;
+                        }
+                        anySuccess = true;
+                    }
+                });
+                if (anySuccess) {
+                    isBackendAvailable = true;
+                    const demoBanner = document.getElementById('demoBanner');
+                    const liveBanner = document.getElementById('liveDataBanner');
+                    if (demoBanner) demoBanner.style.display = 'none';
+                    if (liveBanner) liveBanner.style.display = 'flex';
+                    const subtitle = document.getElementById('chartSubtitle');
+                    if (subtitle) subtitle.textContent = 'Live NSE data via Yahoo Finance';
                 }
             } catch (e) {
-                // silently keep static data
+                // silent fallback — keep static data
             }
         }
 
@@ -2144,42 +2181,23 @@
         };
 
         async function fetchLiveTrending(type) {
-            const syms = TRENDING_SYMBOLS[type] || TRENDING_SYMBOLS.gainers;
-            // Show skeleton loaders
-            const container = document.getElementById('stockList');
-            if (container) {
-                container.innerHTML = syms.slice(0, 8).map(() =>
-                    `<div class="stock-item skeleton" style="height:62px;border-radius:6px;"></div>`
-                ).join('');
-            }
+            const symbolLists = {
+                gainers: ['ADANIENT.NS','TATAMOTORS.NS','SUNPHARMA.NS','HINDALCO.NS','LT.NS','ICICIBANK.NS','RELIANCE.NS','INFY.NS','BHARTIARTL.NS','AXISBANK.NS','SBIN.NS','MARUTI.NS'],
+                losers:  ['BAJFINANCE.NS','TCS.NS','WIPRO.NS','JSWSTEEL.NS','ONGC.NS','HDFCBANK.NS','NTPC.NS','KOTAKBANK.NS'],
+                active:  ['RELIANCE.NS','HDFCBANK.NS','SBIN.NS','TCS.NS','INFY.NS','ICICIBANK.NS','TATAMOTORS.NS','AXISBANK.NS','BAJFINANCE.NS','LT.NS','ADANIENT.NS']
+            };
+            const syms = symbolLists[type] || symbolLists.gainers;
             try {
-                const promises = syms.map(sym =>
-                    liveApiFetch(`${LIVE_API_BASE}/stock?symbol=${sym}.NS`).catch(() => null)
-                );
-                const results = await Promise.allSettled(promises);
+                const results = await Promise.allSettled(syms.map(s => fetchStockQuote(s)));
                 const live = results
-                    .filter(r => r.status === 'fulfilled' && r.value && r.value.price)
-                    .map(r => {
-                        const v = r.value;
-                        // Supplement name from static data if API doesn't provide it
-                        const staticEntry = (TRENDING_DATA[type] || []).find(s =>
-                            (v.symbol || '').replace('.NS','') === s.symbol
-                        );
-                        return {
-                            symbol: (v.symbol || '').replace('.NS',''),
-                            name: v.name || (staticEntry && staticEntry.name) || (v.symbol || '').replace('.NS',''),
-                            price: parseFloat(v.price),
-                            changePercent: parseFloat(v.changePercent)
-                        };
-                    });
-                if (live.length > 0) {
+                    .filter(r => r.status === 'fulfilled')
+                    .map(r => r.value);
+                if (live.length >= 3) {
                     populateStocksList(live);
-                    markLiveDataActive();
                     return;
                 }
-            } catch (e) {
-                // fall through to static
-            }
+            } catch (e) { /* fall through */ }
+            // fallback
             populateStocksList(TRENDING_DATA[type] || TRENDING_DATA.gainers);
         }
 
@@ -2209,6 +2227,8 @@
         }
 
         function fetchTrending(type) {
+            // show static data immediately, then try live update
+            populateStocksList(TRENDING_DATA[type] || TRENDING_DATA.gainers);
             fetchLiveTrending(type);
         }
 
@@ -2489,22 +2509,28 @@
                 // Show local results immediately
                 showSearchResults(localResults);
 
-                // Also fetch live API search results and merge
+                // Also try live API search results via Yahoo Finance autocomplete
                 try {
-                    const data = await liveApiFetch(`${LIVE_API_BASE}/search?q=${encodeURIComponent(query)}`);
-                    const apiResults = (data.results || []).map(r => ({
-                        symbol: (r.symbol || '').replace('.NS','').replace('.BO',''),
-                        name: r.name || r.symbol,
-                        price: parseFloat(r.price) || 0,
-                        changePercent: parseFloat(r.changePercent) || 0
-                    }));
-                    // Deduplicate: prefer API results, merge with local
-                    const seen = new Set(apiResults.map(r => r.symbol));
-                    const merged = [...apiResults, ...localResults.filter(r => !seen.has(r.symbol))].slice(0, 10);
-                    if (merged.length > 0) showSearchResults(merged);
-                } catch (e) {
-                    // keep local results already shown
-                }
+                    const acUrl = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query)}&quotesCount=6&newsCount=0&listsCount=0`;
+                    fetch(acUrl).then(r => r.json()).then(json => {
+                        const quotes = (json.quotes || [])
+                            .filter(q => q.quoteType === 'EQUITY' && (q.exchange === 'NSI' || q.exchange === 'BSE'))
+                            .slice(0, 5)
+                            .map(q => ({
+                                symbol: (q.symbol || '').replace('.NS','').replace('.BO',''),
+                                name: q.shortname || q.longname || q.symbol,
+                                price: q.regularMarketPrice || 0,
+                                changePercent: q.regularMarketChangePercent || 0
+                            }));
+                        if (quotes.length > 0) {
+                            const merged = [...localResults];
+                            quotes.forEach(q => {
+                                if (!merged.find(e => e.symbol === q.symbol)) merged.push(q);
+                            });
+                            showSearchResults(merged.slice(0, 10));
+                        }
+                    }).catch(() => {});
+                } catch(e) {}
             }, 300);
         });
 
