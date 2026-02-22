@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 80" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Back legs -->
+  <ellipse cx="29" cy="21" rx="9" ry="5" fill="#e0e0e0" stroke="#111" stroke-width="2.2" transform="rotate(28 29 21)"/>
+  <ellipse cx="29" cy="61" rx="9" ry="5" fill="#e0e0e0" stroke="#111" stroke-width="2.2" transform="rotate(-28 29 61)"/>
+  <!-- Front legs -->
+  <ellipse cx="64" cy="21" rx="9" ry="5" fill="#e0e0e0" stroke="#111" stroke-width="2.2" transform="rotate(-28 64 21)"/>
+  <ellipse cx="64" cy="61" rx="9" ry="5" fill="#e0e0e0" stroke="#111" stroke-width="2.2" transform="rotate(28 64 61)"/>
+  <!-- Tail -->
+  <path d="M18 38 C11 33 8 40 11 46 C15 44 16 41 18 43" fill="#e0e0e0" stroke="#111" stroke-width="2"/>
+  <!-- Body -->
+  <ellipse cx="47" cy="41" rx="30" ry="20" fill="#e0e0e0" stroke="#111" stroke-width="2.5"/>
+  <!-- Shell dome -->
+  <ellipse cx="47" cy="37" rx="25" ry="21" fill="#f0f0f0" stroke="#111" stroke-width="2.2"/>
+  <!-- Shell hex pattern -->
+  <line x1="47" y1="16" x2="47" y2="58" stroke="#333" stroke-width="1.3"/>
+  <line x1="24" y1="29" x2="70" y2="29" stroke="#333" stroke-width="1.3"/>
+  <line x1="24" y1="46" x2="70" y2="46" stroke="#333" stroke-width="1.3"/>
+  <line x1="34" y1="17" x2="23" y2="47" stroke="#333" stroke-width="1.1"/>
+  <line x1="60" y1="17" x2="71" y2="47" stroke="#333" stroke-width="1.1"/>
+  <!-- Head -->
+  <circle cx="80" cy="36" r="11" fill="#e0e0e0" stroke="#111" stroke-width="2.2"/>
+  <!-- Eye -->
+  <circle cx="85" cy="31" r="2.5" fill="#111"/>
+  <circle cx="85.8" cy="30.3" r="1" fill="#fff"/>
+  <!-- Smile -->
+  <path d="M76 39 Q80 44 84 39" stroke="#111" stroke-width="2" fill="none" stroke-linecap="round"/>
+</svg>
