@@ -8,7 +8,7 @@
     <title>SARETY - Financial Markets</title>
     <meta name="description"
         content="SARETY - Real-time financial market data, portfolio tracking, and market analysis." />
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='4' fill='%23000'/><text x='16' y='23' font-family='Arial' font-weight='bold' font-size='20' fill='%2300c853' text-anchor='middle'>S</text></svg>" />
+    <link rel="icon" href="logo.svg" type="image/svg+xml" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
@@ -1400,21 +1400,97 @@
                 grid-template-columns: 1fr;
             }
         }
+
+        /* ─── TURTLE LOGO IMAGES ────────────────────────────────────────── */
+        .logo-img {
+            height: 36px;
+            width: auto;
+            margin-right: 10px;
+            filter: invert(1);
+            transition: filter 0.3s;
+            flex-shrink: 0;
+        }
+
+        .logo-img:hover {
+            filter: invert(1) drop-shadow(0 0 6px #00c853);
+        }
+
+        .loading-logo-img {
+            height: 80px;
+            width: auto;
+            margin-bottom: 12px;
+            filter: invert(1);
+        }
+
+        /* ─── LOGO WRAP FLEX ROW ────────────────────────────────────────── */
+        .logo-wrap {
+            flex-direction: row !important;
+            align-items: center;
+        }
+
+        .logo-wrap-text {
+            display: flex;
+            flex-direction: column;
+            line-height: 1;
+        }
+
+        /* ─── HEADER GRADIENT BORDER ────────────────────────────────────── */
+        .header::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(0,200,83,0.4), rgba(255,255,255,0.2), rgba(0,200,83,0.4), transparent);
+        }
+
+        /* ─── LOADING BAR PULSE ─────────────────────────────────────────── */
+        @keyframes loadBarPulse {
+            0%   { opacity: 1; }
+            50%  { opacity: 0.6; }
+            100% { opacity: 1; }
+        }
+
+        .loading-bar-fill.done {
+            width: 100%;
+            animation: loadBarPulse 1s ease-in-out infinite;
+        }
+
+        /* ─── LIVE DATA BANNER ──────────────────────────────────────────── */
+        #liveDataBanner {
+            display: none;
+            background: linear-gradient(90deg, #001a08, #002610, #001a08);
+            border-bottom: 1px solid rgba(0,200,83,0.4);
+            padding: 8px 24px;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            font-size: 0.8rem;
+            color: #00c853;
+            font-family: 'JetBrains Mono', monospace;
+        }
     </style>
 </head>
 
 <body>
     <!-- Loading Screen -->
     <div id="loadingScreen">
+        <img src="logo.svg" class="loading-logo-img" alt="Sarety">
         <div class="loading-logo">SARETY</div>
-        <div class="loading-tagline">HIGH FREQUENCY TRADING</div>
-        <div class="loading-bar"><div class="loading-bar-fill"></div></div>
+        <div class="loading-tagline">FINANCIAL MARKETS · NSE · BSE</div>
+        <div class="loading-bar"><div class="loading-bar-fill" id="loadingBarFill"></div></div>
     </div>
 
     <!-- Demo Mode Banner -->
     <div id="demoBanner">
         <span>⚡ DEMO MODE — Live data requires backend. Showing simulated market data.</span>
         <button onclick="document.getElementById('demoBanner').style.display='none'">✕ Dismiss</button>
+    </div>
+
+    <!-- Live Data Banner (shown when API succeeds) -->
+    <div id="liveDataBanner">
+        <span>● LIVE DATA — Real-time NSE data via open API</span>
     </div>
 
     <!-- Moving Stock Ticker -->
@@ -1428,8 +1504,11 @@
     <header class="header">
         <div class="header-content">
             <div class="logo-wrap" onclick="document.querySelectorAll('.nav-item')[0].click()">
-                <div class="logo">SARETY<span class="logo-dot"></span></div>
-                <div class="logo-tagline">HIGH FREQUENCY TRADING</div>
+                <img src="logo.svg" alt="Sarety" class="logo-img">
+                <div class="logo-wrap-text">
+                    <div class="logo">SARETY<span class="logo-dot"></span></div>
+                    <div class="logo-tagline">FINANCIAL MARKETS</div>
+                </div>
             </div>
             <div class="search-box">
                 <input type="text" class="search-input" placeholder="Search stocks, indices, or news..."
@@ -1476,25 +1555,25 @@
             <h2 class="section-title">Market Overview</h2>
 
             <div class="market-grid">
-                <div class="market-card" data-index="nifty">
+                <div class="market-card" data-index="nifty" data-symbol="^NSEI">
                     <div class="market-card-title">Nifty 50</div>
                     <div class="market-card-value" id="niftyValue">23,907.25</div>
                     <div class="market-card-change up" id="niftyChange">▲ +142.80 (+0.60%)</div>
                     <div class="sparkline-wrap"><svg id="sparkNifty" width="100%" height="40" viewBox="0 0 200 40" preserveAspectRatio="none"></svg></div>
                 </div>
-                <div class="market-card" data-index="sensex">
+                <div class="market-card" data-index="sensex" data-symbol="^BSESN">
                     <div class="market-card-title">Sensex</div>
                     <div class="market-card-value" id="sensexValue">78,956.75</div>
                     <div class="market-card-change up" id="sensexChange">▲ +521.25 (+0.66%)</div>
                     <div class="sparkline-wrap"><svg id="sparkSensex" width="100%" height="40" viewBox="0 0 200 40" preserveAspectRatio="none"></svg></div>
                 </div>
-                <div class="market-card" data-index="banknifty">
+                <div class="market-card" data-index="banknifty" data-symbol="^NSEBANK">
                     <div class="market-card-title">Bank Nifty</div>
                     <div class="market-card-value" id="bankNiftyValue">51,232.40</div>
                     <div class="market-card-change down" id="bankNiftyChange">▼ -187.35 (-0.36%)</div>
                     <div class="sparkline-wrap"><svg id="sparkBankNifty" width="100%" height="40" viewBox="0 0 200 40" preserveAspectRatio="none"></svg></div>
                 </div>
-                <div class="market-card" data-index="gold">
+                <div class="market-card" data-index="gold" data-symbol="GC=F">
                     <div class="market-card-title">Gold (₹/10g)</div>
                     <div class="market-card-value" id="goldValue">72,450</div>
                     <div class="market-card-change up" id="goldChange">▲ +320 (+0.44%)</div>
@@ -1507,7 +1586,7 @@
                 <div class="chart-header">
                     <div class="chart-title-info">
                         <div class="chart-main-title" id="chartTitle">NIFTY 50 <span class="live-badge" id="liveBadge" style="display:none">LIVE</span></div>
-                        <div class="chart-subtitle">Simulated market data</div>
+                        <div class="chart-subtitle" id="chartSubtitle">Simulated market data</div>
                     </div>
                     <div class="chart-timeframes">
                         <button class="timeframe-btn" data-timeframe="1d">1D</button>
@@ -1658,7 +1737,10 @@
     <!-- Footer -->
     <footer class="footer">
         <div class="footer-content">
-            <div>SARETY &copy; <span id="footerYear"></span> &mdash; Financial Markets Dashboard</div>
+            <div>
+                <div>SARETY &copy; <span id="footerYear"></span> &mdash; Financial Markets Dashboard</div>
+                <div style="margin-top:4px;font-size:0.72rem;color:var(--text-muted)" id="footerDataNote">Data sourced from NSE via open API · For informational purposes only</div>
+            </div>
             <div class="footer-right" id="footerTime"></div>
         </div>
     </footer>
@@ -1667,8 +1749,10 @@
     <script>
         // ─── CONFIGURATION ───────────────────────────────────────────────
         const API_BASE_URL = '';   // No backend on GitHub Pages — static mode only
+        const LIVE_API_BASE = 'https://military-jobye-haiqstudios-14f59639.koyeb.app';
         const FETCH_TIMEOUT = 8000;
         let isBackendAvailable = false;
+        let liveDataActive = false;
         let currentTab = 'gainers';
 
         // ─── UTILITIES ───────────────────────────────────────────────────
@@ -1965,6 +2049,140 @@
             });
         }
 
+        // ─── LIVE DATA HELPERS ───────────────────────────────────────────
+        function markLiveDataActive() {
+            if (!liveDataActive) {
+                liveDataActive = true;
+                const demoBanner = document.getElementById('demoBanner');
+                const liveBanner = document.getElementById('liveDataBanner');
+                if (demoBanner) demoBanner.style.display = 'none';
+                if (liveBanner) liveBanner.style.display = 'flex';
+                const subtitle = document.getElementById('chartSubtitle');
+                if (subtitle) subtitle.textContent = 'Live NSE data via open API';
+            }
+        }
+
+        async function liveApiFetch(url) {
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
+            try {
+                const res = await fetch(url, { signal: controller.signal });
+                clearTimeout(timer);
+                if (!res.ok) throw new Error('non-ok');
+                return await res.json();
+            } catch (e) {
+                clearTimeout(timer);
+                throw e;
+            }
+        }
+
+        // ─── LIVE TICKER FETCH ───────────────────────────────────────────
+        const TICKER_SYMBOLS = [
+            'RELIANCE','TCS','INFY','HDFCBANK','ICICIBANK','SBIN','WIPRO',
+            'AXISBANK','LT','BAJFINANCE','HINDUNILVR','KOTAKBANK','MARUTI',
+            'TATAMOTORS','ONGC','SUNPHARMA','BHARTIARTL','ADANIENT','TATASTEEL','HINDALCO'
+        ];
+
+        async function fetchLiveTickerData() {
+            try {
+                const promises = TICKER_SYMBOLS.map(sym =>
+                    liveApiFetch(`${LIVE_API_BASE}/stock?symbol=${sym}.NS`)
+                        .catch(() => null)
+                );
+                const results = await Promise.allSettled(promises);
+                const live = results
+                    .filter(r => r.status === 'fulfilled' && r.value && r.value.price)
+                    .map(r => r.value);
+                if (live.length > 0) {
+                    updateTicker(live);
+                    markLiveDataActive();
+                }
+            } catch (e) {
+                // silently fall back to static data
+            }
+        }
+
+        // ─── LIVE INDICES FETCH ──────────────────────────────────────────
+        async function fetchLiveIndices() {
+            try {
+                const [nsei, bsesn, nsebank] = await Promise.allSettled([
+                    liveApiFetch(`${LIVE_API_BASE}/stock?symbol=^NSEI`),
+                    liveApiFetch(`${LIVE_API_BASE}/stock?symbol=^BSESN`),
+                    liveApiFetch(`${LIVE_API_BASE}/stock?symbol=^NSEBANK`)
+                ]);
+                const indices = [nsei, bsesn, nsebank]
+                    .filter(r => r.status === 'fulfilled' && r.value && r.value.price)
+                    .map(r => r.value);
+                if (indices.length > 0) {
+                    updateIndicesUI(indices);
+                    // Update movers bar with live data
+                    indices.forEach(idx => {
+                        const pct = parseFloat(idx.changePercent);
+                        const sym = (idx.symbol || '').replace('^','');
+                        const idMap = { 'NSEI': 'moverNifty', 'BSESN': 'moverSensex', 'NSEBANK': 'moverBankNifty' };
+                        const elId = idMap[sym];
+                        if (elId) {
+                            const el = document.getElementById(elId);
+                            if (el) {
+                                el.className = pct >= 0 ? 'up' : 'down';
+                                el.textContent = `${pct >= 0 ? '▲' : '▼'} ${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%`;
+                            }
+                        }
+                    });
+                    markLiveDataActive();
+                }
+            } catch (e) {
+                // silently keep static data
+            }
+        }
+
+        // ─── LIVE TRENDING FETCH ─────────────────────────────────────────
+        const TRENDING_SYMBOLS = {
+            gainers: ['ADANIENT','TATAMOTORS','SUNPHARMA','HINDALCO','LT','ICICIBANK','RELIANCE','INFY','BHARTIARTL','AXISBANK','SBIN','MARUTI'],
+            losers:  ['BAJFINANCE','TCS','WIPRO','JSWSTEEL','ONGC','HDFCBANK','ZEEL','NTPC','KOTAKBANK','POWERGRID','NESTLEIND'],
+            active:  ['RELIANCE','HDFCBANK','SBIN','TCS','INFY','ICICIBANK','TATAMOTORS','AXISBANK','BAJFINANCE','LT','ADANIENT']
+        };
+
+        async function fetchLiveTrending(type) {
+            const syms = TRENDING_SYMBOLS[type] || TRENDING_SYMBOLS.gainers;
+            // Show skeleton loaders
+            const container = document.getElementById('stockList');
+            if (container) {
+                container.innerHTML = syms.slice(0, 8).map(() =>
+                    `<div class="stock-item skeleton" style="height:62px;border-radius:6px;"></div>`
+                ).join('');
+            }
+            try {
+                const promises = syms.map(sym =>
+                    liveApiFetch(`${LIVE_API_BASE}/stock?symbol=${sym}.NS`).catch(() => null)
+                );
+                const results = await Promise.allSettled(promises);
+                const live = results
+                    .filter(r => r.status === 'fulfilled' && r.value && r.value.price)
+                    .map(r => {
+                        const v = r.value;
+                        // Supplement name from static data if API doesn't provide it
+                        const staticEntry = (TRENDING_DATA[type] || []).find(s =>
+                            (v.symbol || '').replace('.NS','') === s.symbol
+                        );
+                        return {
+                            symbol: (v.symbol || '').replace('.NS',''),
+                            name: v.name || (staticEntry && staticEntry.name) || (v.symbol || '').replace('.NS',''),
+                            price: parseFloat(v.price),
+                            changePercent: parseFloat(v.changePercent)
+                        };
+                    });
+                if (live.length > 0) {
+                    populateStocksList(live);
+                    markLiveDataActive();
+                    return;
+                }
+            } catch (e) {
+                // fall through to static
+            }
+            populateStocksList(TRENDING_DATA[type] || TRENDING_DATA.gainers);
+        }
+
         // ─── STOCK LIST ──────────────────────────────────────────────────
         function populateStocksList(stocks) {
             const container = document.getElementById('stockList');
@@ -1991,8 +2209,7 @@
         }
 
         function fetchTrending(type) {
-            const data = TRENDING_DATA[type] || TRENDING_DATA.gainers;
-            populateStocksList(data);
+            fetchLiveTrending(type);
         }
 
         // ─── PORTFOLIO ───────────────────────────────────────────────────
@@ -2264,11 +2481,30 @@
             if (searchClear) searchClear.style.display = query ? 'block' : 'none';
             clearTimeout(searchDebounce);
             if (query.length < 2) { hideSearchDropdown(); return; }
-            searchDebounce = setTimeout(() => {
-                const results = TICKER_STOCKS.filter(s =>
+            searchDebounce = setTimeout(async () => {
+                const localResults = TICKER_STOCKS.filter(s =>
                     s.symbol.toLowerCase().includes(query.toLowerCase())
-                ).slice(0, 8);
-                showSearchResults(results.map(s => ({ symbol: s.symbol, name: s.symbol, price: s.price, changePercent: s.changePercent })));
+                ).slice(0, 8).map(s => ({ symbol: s.symbol, name: s.symbol, price: s.price, changePercent: s.changePercent }));
+
+                // Show local results immediately
+                showSearchResults(localResults);
+
+                // Also fetch live API search results and merge
+                try {
+                    const data = await liveApiFetch(`${LIVE_API_BASE}/search?q=${encodeURIComponent(query)}`);
+                    const apiResults = (data.results || []).map(r => ({
+                        symbol: (r.symbol || '').replace('.NS','').replace('.BO',''),
+                        name: r.name || r.symbol,
+                        price: parseFloat(r.price) || 0,
+                        changePercent: parseFloat(r.changePercent) || 0
+                    }));
+                    // Deduplicate: prefer API results, merge with local
+                    const seen = new Set(apiResults.map(r => r.symbol));
+                    const merged = [...apiResults, ...localResults.filter(r => !seen.has(r.symbol))].slice(0, 10);
+                    if (merged.length > 0) showSearchResults(merged);
+                } catch (e) {
+                    // keep local results already shown
+                }
             }, 300);
         });
 
@@ -2415,10 +2651,10 @@
         updateMarketStatus();
         setInterval(updateMarketStatus, 60000);
 
-        // Top movers bar
+        // Top movers bar (static defaults)
         updateMoversBar();
 
-        // Ticker (static data immediately)
+        // Ticker (static data immediately, live data overlaid when ready)
         updateTicker(TICKER_STOCKS);
 
         // Sparklines
@@ -2431,12 +2667,24 @@
         // Chart animation
         setInterval(updateChartData, 5000);
 
+        // Fetch live data on init
+        fetchLiveIndices();
+        fetchLiveTickerData();
+
+        // Auto-refresh intervals
+        setInterval(fetchLiveIndices, 60000);
+        setInterval(fetchLiveTickerData, 120000);
+
         // Loading screen fade-out
         setTimeout(() => {
             const ls = document.getElementById('loadingScreen');
+            const fill = document.getElementById('loadingBarFill');
+            if (fill) fill.classList.add('done');
             if (ls) {
-                ls.classList.add('fade-out');
-                setTimeout(() => ls.remove(), 700);
+                setTimeout(() => {
+                    ls.classList.add('fade-out');
+                    setTimeout(() => ls.remove(), 700);
+                }, 300);
             }
         }, 1200);
     </script>
